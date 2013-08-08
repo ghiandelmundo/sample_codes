@@ -1,0 +1,131 @@
+<?php $this->load->view($header); ?>
+<?php 
+//$this->load->view($left); 
+echo link_tag("public/kaizen/validator/css/validationEngine.jquery.css")."\n";
+?>
+<script type="text/javascript" src="<?php echo site_url("public/ckeditor/adapters/jquery.js");?>"></script>
+<script src="<?php echo site_url("public/kaizen/validator/js/languages/jquery.validationEngine-en.js");?>" type="text/javascript" charset="utf-8"></script>
+<script src="<?php echo site_url("public/kaizen/validator/js/jquery.validationEngine.js");?>" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript">
+  $(document).ready(function(){
+		$("#cont").validationEngine();
+	});	
+	
+	function form_edit()
+	{
+		$('#cont').attr('action','<?= site_url('businesscard/detail'.(($id) ? '/'.$id : '')) ?>');
+		$('#cont').submit();
+		return true;
+	}
+	
+	function form_submit()
+	{
+		$('.bottonportion').hide();
+		$('#cont').submit();
+		$('#cont').attr('action','.');
+		return true;
+	}
+</script>
+
+		<div class="reptdiv">
+        
+            <div class="bodycontentdiv">
+            
+                <h2>Business Card Preview</h2>
+                <p class="medatorycolor">
+                <?php 
+				   if(isset($error)) {  
+					 echo $error;
+				   } elseif($this->session->flashdata('message')) {  
+					 echo $this->session->flashdata('message');
+				   }
+				 ?>
+                </p>
+                
+                <a  href="<?= site_url('cart') ?>" onclick="form_submit();" class="viewcartbutt">View Cart</a>
+                
+                <a  href="<?= site_url() ?>" class="viewcartbutt">Catalog</a>
+                
+                <?php 
+				 $attributes = array('name' => 'cont', 'id' => 'cont');
+				 echo form_open_multipart( (($id) ? 'businesscard/update/'.$id: 'businesscard/add'), $attributes);
+		         ?>
+
+                 <div class="visitingcard">
+                 <?php if($fk_cat_id != 1): ?>
+                   <h2 class="nametxt"><?= $name.(($designation) ? ', '.$designation : '') ?></h2>
+                   <p class="ceotct"><?= $title ?></p>
+                    
+                   <p class="visitingcardcontent"> <strong><?= $company_name ?></strong><br />
+                      <?= $address.(($address2) ? ', '.$address2 : '') ?><br />
+                      <?php if($cell_number) { ?>
+                      Mobile: <?= $cell_number ?><br />
+                      <?php } ?>
+                      <?php if($telephone) { ?>
+                      Office: <?= $telephone.(($extension) ? ' (Ext.: '.$extension.')' : ''); ?><br />
+                      <?php } ?>
+                      <?php if($fax) { ?>
+                      Fax: <?= $fax ?><br />
+                      <?php } ?>
+                      <?php if($email) { ?>
+                      <?= $email ?>
+                      <?php } ?>
+                   </p>
+                   
+                   <input type="hidden" name="name" value="<?= $name ?>" />
+
+                   <input type="hidden" name="designation" value="<?= $designation ?>" />
+  
+                   <input type="hidden" name="title" value="<?= $title ?>" />
+
+                   <input type="hidden" name="address" value="<?= $address ?>" />
+ 
+                   <input type="hidden" name="address2" value="<?= $address2 ?>" />
+
+                   <input type="hidden" name="telephone" value="<?= $telephone ?>" />
+ 
+                   <input type="hidden" name="extension" value="<?= $extension ?>" />
+ 
+                   <input type="hidden" name="fax" value="<?= $fax ?>" />
+
+                   <input type="hidden" name="cell_number" value="<?= $cell_number ?>" />
+
+                   <input type="hidden" name="email" value="<?= $email ?>" />
+                 
+                   <input type="hidden" name="company_name" value="<?= $company_name; ?>">
+                   
+                 <?php endif ?>
+                 </div> 
+                 
+                 <input type="hidden" name="has_qrcode" value="<?= $has_qrcode ?>" />
+                 <?php if(isset($has_qrcode) && isset($qrcode_file) && $qrcode_file != ''): ?>
+                 <div class="qrcodedisplay">
+                   QR Code File:
+                   <div class="qrcodefileblock">
+                   <?php 
+                      echo '<a href="'.$qrcode_urlpath.$qrcode_file.'" target="_blank"><strong>'.$qrcode_file.'</strong></a>';
+                    ?>
+                   </div>
+                 </div> 
+                 <input type="hidden" name="qrcode_file" value="<?= $qrcode_file; ?>" /> 
+                 <?php endif ?>  
+                 
+                 <input type="hidden" name="fk_cat_id" value="<?= $fk_cat_id; ?>">
+                 
+                 <input type="hidden" name="hash_key" value="<?= $hash_key; ?>">
+
+                 <a href="javascript:void(0);" class="viewcartbutt" onclick="form_submit();">Save</a>
+                
+                 <?php if($fk_cat_id != 1): ?>
+                 <a href="javascript:void(0);" class="viewcartbutt" onclick="form_edit();">Modify</a>
+                 <?php endif ?>
+  
+                <?php echo form_close(); ?>
+                
+                <div class="spacer"></div>
+                            
+            </div>
+                	
+        </div>
+
+<?php $this->load->view($footer); ?>
