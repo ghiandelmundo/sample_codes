@@ -1,0 +1,243 @@
+<?php 
+/* Businesscard Codeigniter Controller */
+
+if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class BusinessCard extends CI_Controller
+{
+  private $_businesscardid = 0;
+	
+	private $_custid;
+	
+	function __construct()
+	{
+		parent::__construct();
+		if( ! $this->session->userdata('web_admin_logged_in')) {
+			redirect('welcome','refresh');
+		}
+		$this->load->vars( array(
+		  'global' => 'Available to all views',
+		  'header' => 'common/header',
+		  'left' => 'common/left',
+		  'footer' => 'common/footer'
+		));
+		
+		$this->load->model('modelbusinesscard');
+		
+		$this->load->model('modelcart');
+		
+		$this->load->model('modelcatalog');
+		
+		$this->_custid = $this->session->userdata('web_admin_user_id');
+		
+		if($this->uri->segment(3)) {
+		   $this->_businesscardid = $this->uri->segment(3);
+		}
+		
+		$this->load->helper('randomstring');
+	}
+	
+	private function uploadfile()
+	{
+		if(isset($_FILES['qrcode_file']) && $_FILES['qrcode_file']['name']) {
+			$usertempuploaddir = file_upload_absolute_path().'temp/'.$this->session->userdata('web_admin_user_id').'/';
+			if(!is_dir($usertempuploaddir)) {
+			   mkdir($usertempuploaddir);
+			}
+			
+			$config['upload_path'] = $usertempuploaddir;
+			$config['allowed_types'] = 'png';
+			$config['overwrite'] = true; //overwrite user avatar
+			$config['encrypt_name'] = true;
+			$config['allowed_types'] = 'pdf';
+			$config['max_size']	= '1000000';
+			
+			$this->load->library('upload', $config);
+		
+			if(!$this->upload->do_upload(key($_FILES))) {
+				$data = $this->input->post();
+				
+				$data['error'] = strip_tags($this->upload->display_errors());
+		       
+				$this->load->view('businesscard_edit', $data);
+				
+				return false;
+			} else {
+				$uploaddata = $this->upload->data();
+			}
+	
+		}
+		
+		return true;
+	}
+	
+	private function deletetempfiles()
+	{
+		$usertempuploaddir = file_upload_absolute_path().'temp/'.$this->session->userdata('web_admin_user_id').'/';
+		
+		$files = glob($usertempuploaddir.'*');
+		foreach($files as $file) {
+		    if(is_file($file)) {
+			    unlink($file); 
+		    }
+		}
+	}
+	
+	private function deleteqrfiles()
+	{
+		$qruploaddir = file_upload_absolute_path().'qrcodes/'.$this->_businesscardid.'/';
+		
+		$files = glob($qruploaddir.'*');
+		foreach($files as $file) {
+		    if(is_file($file)) {
+			    unlink($file); 
+		    }
+		}
+		
+		if(is_dir($qruploaddir)) {
+			rmdir($qruploaddir);
+		}
+	}
+	
+	public function publishfile($businesscard_id, $file)
+	{
+	    $usertempuploaddir = file_upload_absolute_path().'temp/'.$this->session->userdata('web_admin_user_id').'/';
+		
+		$qrcodesdir = file_upload_absolute_path().'qrcodes/'.$businesscard_id.'/';
+		if(!is_dir($qrcodesdir)) {
+		   mkdir($qrcodesdir);
+		}
+		
+		if(file_exists($usertempuploaddir.'/'.$file) && !file_exists($qrcodesdir.'/'.$file)) {
+		   copy($usertempuploaddir.'/'.$file, $qrcodesdir.'/'.$file);
+		   
+		   $this->deletetempfiles();
+		}
+	}
+
+	public function index()
+	{
+		redirect('main','refresh');
+	}
+
+	public function detail()
+	{
+		$data = array();
+		$fk_cat_id = 0;
+		
+		if( $this->_businesscardid ) {
+			$businesscarddetails = $this->modelbusinesscard->getBusinessCardDetails($this->_businesscardid);
+	
+			$fk_cat_id = $businesscarddetails->fk_cat_id;
+			$data = $businesscarddetails;
+	
+	        $data->has_qrcode = $this->modelcatalog->hasQRCode($this->_businesscardid);
+		} else {
+			$this->deletetempfiles();
+			
+			$postdata = $this->input->post();
+			if($postdata) {
+			   $data = $postdata;
+			}
+			
+			$fk_cat_id = $this->input->post('fk_cat_id');
+			
+			$data['fk_cat_id'] = $fk_cat_id;
+			
+			$data['hash_key'] = generateRandomString(35);
+			
+			if($this->_businesscardid == '') {
+			   	$data['qrcode_file'] = '';
+			}
+		}
+		
+		if(!$fk_cat_id){
+            redirect('main','refresh');
+        }
+
+		$this->load->view('businesscard_edit', $data);
+	}
+	
+	public function preview()
+	{
+		$isvalid = $this->uploadfile();
+		
+		if($isvalid) {
+			$data = array();
+			
+			$hashkey = $this->input->post('hash_key');
+			$postdata = $this->input->post();
+			if($postdata) {
+			   $data = $postdata;
+			} else {
+			   if($this->_businesscardid) {
+				  redirect('businesscard/detail/'.$this->_businesscardid,'refresh');
+			   } else {
+				  redirect('main','refresh');
+			   }
+			}
+			
+			$data['id'] = $this->_businesscardid;
+			if($hashkey == '') {
+			   $data['hash_key'] = generateRandomString(35);	
+			}
+			//$data['has_qrcode'] = $this->modelcatalog->hasQRCode($this->_businesscardid);
+			
+			if(isset($_FILES['qrcode_file']) && $_FILES['qrcode_file']['name']) {
+				$data['qrcode_urlpath'] = file_upload_base_url().'temp/'.$this->session->userdata('web_admin_user_id').'/';
+				$data['qrcode_file'] = $_FILES['qrcode_file']['name'];
+			} else {
+				$data['qrcode_urlpath'] = file_upload_base_url().'qrcodes/'.$this->_businesscardid.'/';
+		
+				$businesscarddetails = $this->modelbusinesscard->getBusinessCardDetails($this->_businesscardid);
+				
+				if(isset($businesscarddetails->qrcode_file)) {
+					$data['qrcode_file'] = $businesscarddetails->qrcode_file;
+				}
+			}
+			
+			$this->load->view('businesscard_preview', $data);
+		}
+	}
+	
+	public function add()
+	{
+		$postdata = $this->input->post();
+	
+	    unset($postdata['fk_cat_id']);
+		unset($postdata['has_qrcode']);
+		
+		$businesscard_id = $this->modelbusinesscard->addBusinessCard($postdata);
+		if($businesscard_id) {
+		    $this->modelcart->addCart($this->_custid, $businesscard_id, $this->input->post('fk_cat_id'));
+			if(isset($postdata['qrcode_file'])) {
+			    $this->publishfile($businesscard_id, $postdata['qrcode_file']);
+			}
+		}
+			
+		$this->session->set_flashdata('message', 'The new business card has been added to the cart.');	
+			
+		redirect('cart','refresh');
+	}
+	
+	public function update()
+	{
+		$postdata = $this->input->post();
+		
+		unset($postdata['has_qrcode']);
+	
+		if($this->modelbusinesscard->updateBusinessCard($this->_businesscardid, $postdata)) {
+			if(isset($postdata['qrcode_file'])) {
+		       $this->publishfile($this->_businesscardid, $postdata['qrcode_file']);
+			}
+		}
+			
+		$this->session->set_flashdata('message', 'The changes to the business card have been saved.');
+		
+		redirect('cart','refresh');
+	}
+	
+	public function delete()
+	{
+		if($this->modelbusinesscard->deleteBusinessCard($this->_businesscardid)) {
+	
